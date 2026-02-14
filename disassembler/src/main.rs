@@ -291,7 +291,7 @@ fn disassemble(raw_bytes: Vec<u8>) -> String {
                 0xc3 => {
                     let adr2 = bytes.next().unwrap();
                     let adr1 = bytes.next().unwrap();
-                    ops += format!("0xc3  JNP    {adr1:02x}{adr2:02x}\n").as_str()
+                    ops += format!("0xc3  JMP    {adr1:02x}{adr2:02x}\n").as_str()
                 }
                 0xc4 => {
                     let adr2 = bytes.next().unwrap();

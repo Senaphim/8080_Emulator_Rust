@@ -1,7 +1,7 @@
 import binascii
 import re
 
-FP = r"./INVADERS-E.json5"
+FP = r"./INVADERS-H.json5"
 
 
 def main():
@@ -17,14 +17,12 @@ def main():
         last = re.split(",|]", last)
         hex_strings += [last[0]]
 
-    with open("./INVADERS.e", "wb") as f:
-        for i in range(0, len(hex_strings), 2):
-            slice = hex_strings[i : i + 2]
-            for hex_string in reversed(slice):
-                hex_string_strip = hex_string.lstrip("0").lstrip("x")
-                print(f"{hex_string = }, {hex_string_strip = }")
+    with open("./INVADERS.h", "wb") as f:
+        for hex_string in hex_strings:
+            hex_string_strip = hex_string.lstrip("0").lstrip("x")
+            print(f"{hex_string = }, {hex_string_strip = }")
 
-                f.write(binascii.unhexlify(hex_string_strip))
+            f.write(binascii.unhexlify(hex_string_strip))
 
 
 if __name__ == "__main__":
