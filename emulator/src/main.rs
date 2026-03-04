@@ -79,6 +79,14 @@ impl State8080 {
             0x85 => self.op_add(Registers::L),
             0x86 => self.op_add(Registers::M),
             0x87 => self.op_add(Registers::A),
+            0x88 => self.op_adc(Registers::B),
+            0x89 => self.op_adc(Registers::C),
+            0x8a => self.op_adc(Registers::D),
+            0x8b => self.op_adc(Registers::E),
+            0x8c => self.op_adc(Registers::H),
+            0x8d => self.op_adc(Registers::L),
+            0x8e => self.op_adc(Registers::M),
+            0x8f => self.op_adc(Registers::A),
 
             0xc6 => self.op_adi(),
 
@@ -174,6 +182,41 @@ impl State8080 {
 
         if err_flag {
             Err("Bad register passed to ADD".to_string())
+        } else {
+            Ok(0)
+        }
+    }
+
+    fn op_adc(&mut self, reg: Registers) -> Result<u8, String> {
+        // As above, 16 bit maths used to emulate 8 bit
+        let mut err_flag = false;
+        let mut total: u16 = self.a as u16;
+        let carry = if self.cc.cy { 1 } else { 0 };
+
+        match reg {
+            Registers::B => total += (self.b as u16) + carry,
+            Registers::C => total += (self.c as u16) + carry,
+            Registers::D => total += (self.d as u16) + carry,
+            Registers::E => total += (self.e as u16) + carry,
+            Registers::H => total += (self.h as u16) + carry,
+            Registers::L => total += (self.l as u16) + carry,
+            Registers::M => {
+                // M references a specific memory addr - treat H/L as a 16 bit addr
+                let ptr = (self.h as u16) << 8 | self.l as u16;
+                total += (self.memory[ptr as usize] as u16) + carry;
+            }
+            Registers::A => total += (self.a as u16) + carry,
+            _ => err_flag = true,
+        }
+
+        // Pass to flags for check
+        self.flags(total);
+
+        // Cast to u8 and and assign back to a (accumulator) register
+        self.a = total as u8;
+
+        if err_flag {
+            Err("Bad register passed to ADC".to_string())
         } else {
             Ok(0)
         }
