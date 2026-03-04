@@ -15,11 +15,11 @@ enum Registers {
 
 #[derive(Default)]
 struct ConditionCodes {
-    z: u8,
-    s: u8,
-    p: u8,
-    cy: u8,
-    ac: u8,
+    z: bool,
+    s: bool,
+    p: bool,
+    cy: bool,
+    ac: bool,
     pad: u8,
 }
 
@@ -60,28 +60,31 @@ impl Default for State8080 {
 impl State8080 {
     fn emulate_8080(&mut self) -> Result<u8, String> {
         let opcode = self.memory[self.pc as usize];
-        let status: Result<u8, String>;
 
-        match opcode {
-            0x00 => status = Ok(0),
-            0x01 => status = self.op_lxi(Registers::B),
+        let status = match opcode {
+            0x00 => Ok(0),
+            0x01 => self.op_lxi(Registers::B),
 
-            0x11 => status = self.op_lxi(Registers::D),
+            0x11 => self.op_lxi(Registers::D),
 
-            0x21 => status = self.op_lxi(Registers::H),
+            0x21 => self.op_lxi(Registers::H),
 
-            0x31 => status = self.op_lxi(Registers::Sp),
+            0x31 => self.op_lxi(Registers::Sp),
 
-            0x80 => status = self.op_add(Registers::B),
-            0x81 => status = self.op_add(Registers::C),
-            0x82 => status = self.op_add(Registers::D),
-            0x83 => status = self.op_add(Registers::E),
-            0x84 => status = self.op_add(Registers::H),
-            0x85 => status = self.op_add(Registers::L),
-            0x86 => status = self.op_add(Registers::M),
-            0x87 => status = self.op_add(Registers::A),
+            0x80 => self.op_add(Registers::B),
+            0x81 => self.op_add(Registers::C),
+            0x82 => self.op_add(Registers::D),
+            0x83 => self.op_add(Registers::E),
+            0x84 => self.op_add(Registers::H),
+            0x85 => self.op_add(Registers::L),
+            0x86 => self.op_add(Registers::M),
+            0x87 => self.op_add(Registers::A),
 
-            _ => status = Err("Unimplemented Opcode".to_string()),
+            0xc6 => self.op_adi(),
+
+            0xce => self.op_aci(),
+
+            _ => Err("Unimplemented Opcode".to_string()),
         };
 
         self.pc += 1;
@@ -127,7 +130,22 @@ impl State8080 {
         }
     }
 
+    // Missing ac (Auxillary Carry) flag, but this is only used for one operation (DAA) so will be
+    // manually set there
+    fn flags(&mut self, val: u16) {
+        // Zero flag
+        self.cc.z = val & 0xff == 0;
+        // Sign flag
+        self.cc.s = val & 0x80 != 0;
+        // Carry flag
+        self.cc.cy = val > 0xff;
+        // Parity flag
+        self.cc.p = parity(val & 0xff);
+    }
+
     fn op_add(&mut self, reg: Registers) -> Result<u8, String> {
+        // Going to use 16 bit maths to emulate 8 bit maths. Makes it easier to tell when we spill
+        // to a number bigger than 8 bits. Wll involve a lot of casting back and forth.
         let mut err_flag = false;
         let mut total: u16 = self.a as u16;
 
@@ -139,6 +157,7 @@ impl State8080 {
             Registers::H => total += self.h as u16,
             Registers::L => total += self.l as u16,
             Registers::M => {
+                // M references a specific memory addr - treat H/L as a 16 bit addr
                 let ptr = (self.h as u16) << 8 | self.l as u16;
                 total += self.memory[ptr as usize] as u16;
             }
@@ -146,26 +165,11 @@ impl State8080 {
             _ => err_flag = true,
         }
 
-        if total & 0xff == 0 {
-            self.cc.z = 1
-        } else {
-            self.cc.z = 0
-        }
+        // flags function modifies relevant flags based off of total
+        self.flags(total);
 
-        if total & 0x80 != 0 {
-            self.cc.s = 1
-        } else {
-            self.cc.s = 0
-        }
-
-        if total > 0xff {
-            self.cc.cy = 1
-        } else {
-            self.cc.cy = 0
-        }
-
-        self.cc.p = parity(total & 0xff);
-
+        // Cast to u8 truncates first 8 bits - good because we don't care, the carry flag handles
+        // if we went over 31
         self.a = total as u8;
 
         if err_flag {
@@ -174,10 +178,38 @@ impl State8080 {
             Ok(0)
         }
     }
+
+    fn op_adi(&mut self) -> Result<u8, String> {
+        self.pc += 1;
+
+        let total: u16 = (self.a as u16) + (self.memory[self.pc as usize] as u16);
+
+        // Pass to flags to check output
+        self.flags(total);
+        self.a = total as u8;
+
+        Ok(0)
+    }
+
+    fn op_aci(&mut self) -> Result<u8, String> {
+        self.pc += 1;
+
+        let total = if self.cc.cy {
+            (self.a as u16) + (self.memory[self.pc as usize] as u16) + 1
+        } else {
+            (self.a as u16) + (self.memory[self.pc as usize] as u16)
+        };
+
+        // Pass to flags to check ouput
+        self.flags(total);
+        self.a = total as u8;
+
+        Ok(0)
+    }
 }
 
-fn parity(num: u16) -> u8 {
-    1
+fn parity(num: u16) -> bool {
+    num.count_ones().is_multiple_of(2)
 }
 
 fn main() {
