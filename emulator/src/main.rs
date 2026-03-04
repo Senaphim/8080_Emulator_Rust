@@ -6,8 +6,10 @@ enum Registers {
     B,
     C,
     D,
+    E,
     H,
     L,
+    M,
     Sp,
 }
 
@@ -70,6 +72,15 @@ impl State8080 {
 
             0x31 => status = self.op_lxi(Registers::Sp),
 
+            0x80 => status = self.op_add(Registers::B),
+            0x81 => status = self.op_add(Registers::C),
+            0x82 => status = self.op_add(Registers::D),
+            0x83 => status = self.op_add(Registers::E),
+            0x84 => status = self.op_add(Registers::H),
+            0x85 => status = self.op_add(Registers::L),
+            0x86 => status = self.op_add(Registers::M),
+            0x87 => status = self.op_add(Registers::A),
+
             _ => status = Err("Unimplemented Opcode".to_string()),
         };
 
@@ -115,6 +126,58 @@ impl State8080 {
             Ok(0)
         }
     }
+
+    fn op_add(&mut self, reg: Registers) -> Result<u8, String> {
+        let mut err_flag = false;
+        let mut total: u16 = self.a as u16;
+
+        match reg {
+            Registers::B => total += self.b as u16,
+            Registers::C => total += self.c as u16,
+            Registers::D => total += self.d as u16,
+            Registers::E => total += self.e as u16,
+            Registers::H => total += self.h as u16,
+            Registers::L => total += self.l as u16,
+            Registers::M => {
+                let ptr = (self.h as u16) << 8 | self.l as u16;
+                total += self.memory[ptr as usize] as u16;
+            }
+            Registers::A => total += self.a as u16,
+            _ => err_flag = true,
+        }
+
+        if total & 0xff == 0 {
+            self.cc.z = 1
+        } else {
+            self.cc.z = 0
+        }
+
+        if total & 0x80 != 0 {
+            self.cc.s = 1
+        } else {
+            self.cc.s = 0
+        }
+
+        if total > 0xff {
+            self.cc.cy = 1
+        } else {
+            self.cc.cy = 0
+        }
+
+        self.cc.p = parity(total & 0xff);
+
+        self.a = total as u8;
+
+        if err_flag {
+            Err("Bad register passed to ADD".to_string())
+        } else {
+            Ok(0)
+        }
+    }
+}
+
+fn parity(num: u16) -> u8 {
+    1
 }
 
 fn main() {
