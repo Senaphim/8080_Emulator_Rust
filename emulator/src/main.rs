@@ -20,7 +20,7 @@ struct ConditionCodes {
     p: bool,
     cy: bool,
     ac: bool,
-    pad: u8,
+    // pad: u8,
 }
 
 struct State8080 {
@@ -33,7 +33,7 @@ struct State8080 {
     l: u8,
     sp: u16,
     pc: u16,
-    int_enable: u8,
+    // int_enable: u8,
     cc: ConditionCodes,
     memory: Vec<u8>,
 }
@@ -50,7 +50,7 @@ impl Default for State8080 {
             l: 0x00,
             sp: 0x00,
             pc: 0x00,
-            int_enable: 0x00,
+            // int_enable: 0x00,
             cc: ConditionCodes::default(),
             memory: vec![0x00],
         }
@@ -88,11 +88,13 @@ impl State8080 {
             0x8e => self.op_adc(Registers::M),
             0x8f => self.op_adc(Registers::A),
 
+            0xc3 => self.op_jmp(),
+
             0xc6 => self.op_adi(),
 
             0xce => self.op_aci(),
 
-            _ => Err("Unimplemented Opcode".to_string()),
+            _ => Err(format!("Unimplemented opcode: {opcode:04x}")),
         };
 
         self.pc += 1;
@@ -123,9 +125,9 @@ impl State8080 {
             }
             Registers::Sp => {
                 self.pc += 1;
-                let upper: u16 = self.memory[self.pc as usize] as u16;
-                self.pc += 1;
                 let lower: u16 = self.memory[self.pc as usize] as u16;
+                self.pc += 1;
+                let upper: u16 = self.memory[self.pc as usize] as u16;
                 self.sp = upper << 8 | lower
             }
             _ => err_flag = true,
@@ -136,6 +138,18 @@ impl State8080 {
         } else {
             Ok(0)
         }
+    }
+
+    fn op_jmp(&mut self) -> Result<u8, String> {
+        self.pc += 1;
+        let lower = self.memory[self.pc as usize] as u16;
+        self.pc += 1;
+        let upper = self.memory[self.pc as usize] as u16;
+        // Minus 1 here as we are going to add one as part of the parent calling function. Need to
+        // make sure that the pointer ends up at the right address
+        self.pc = (upper << 8 | lower) - 1;
+
+        Ok(0)
     }
 
     // Missing ac (Auxillary Carry) flag, but this is only used for one operation (DAA) so will be
