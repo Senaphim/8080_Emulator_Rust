@@ -151,27 +151,46 @@ impl State8080 {
         self.cc.p = parity(val & 0xff);
     }
 
+    // Function for calculating ac flag. Need to bit mask bits 4-7 (this also masks bits 7-15 as
+    // well as we are using 16 bit maths to emulate 8 bit) to work out if ac it activated
+    fn ac_flag(&mut self, val: u16) {
+        let accumulator = (self.a as u16) & 0xf;
+        let adder = val & 0xf;
+        let total = accumulator + adder;
+
+        self.cc.ac = total > 0xf;
+    }
+
     fn op_add(&mut self, reg: Registers) -> Result<u8, String> {
         // Going to use 16 bit maths to emulate 8 bit maths. Makes it easier to tell when we spill
         // to a number bigger than 8 bits. Wll involve a lot of casting back and forth.
         let mut err_flag = false;
         let mut total: u16 = self.a as u16;
 
-        match reg {
-            Registers::B => total += self.b as u16,
-            Registers::C => total += self.c as u16,
-            Registers::D => total += self.d as u16,
-            Registers::E => total += self.e as u16,
-            Registers::H => total += self.h as u16,
-            Registers::L => total += self.l as u16,
+        let adder = match reg {
+            Registers::B => self.b as u16,
+            Registers::C => self.c as u16,
+            Registers::D => self.d as u16,
+            Registers::E => self.e as u16,
+            Registers::H => self.h as u16,
+            Registers::L => self.l as u16,
             Registers::M => {
                 // M references a specific memory addr - treat H/L as a 16 bit addr
                 let ptr = (self.h as u16) << 8 | self.l as u16;
-                total += self.memory[ptr as usize] as u16;
+                self.memory[ptr as usize] as u16
             }
-            Registers::A => total += self.a as u16,
-            _ => err_flag = true,
-        }
+            Registers::A => self.a as u16,
+            _ => {
+                err_flag = true;
+                0
+            }
+        };
+
+        total += adder;
+
+        // Check ac flag. This is changed by every arithmetic operation but only affects one
+        // instruction...
+        self.ac_flag(adder);
 
         // flags function modifies relevant flags based off of total
         self.flags(total);
@@ -193,21 +212,29 @@ impl State8080 {
         let mut total: u16 = self.a as u16;
         let carry = if self.cc.cy { 1 } else { 0 };
 
-        match reg {
-            Registers::B => total += (self.b as u16) + carry,
-            Registers::C => total += (self.c as u16) + carry,
-            Registers::D => total += (self.d as u16) + carry,
-            Registers::E => total += (self.e as u16) + carry,
-            Registers::H => total += (self.h as u16) + carry,
-            Registers::L => total += (self.l as u16) + carry,
+        let adder = match reg {
+            Registers::B => (self.b as u16) + carry,
+            Registers::C => (self.c as u16) + carry,
+            Registers::D => (self.d as u16) + carry,
+            Registers::E => (self.e as u16) + carry,
+            Registers::H => (self.h as u16) + carry,
+            Registers::L => (self.l as u16) + carry,
             Registers::M => {
                 // M references a specific memory addr - treat H/L as a 16 bit addr
                 let ptr = (self.h as u16) << 8 | self.l as u16;
-                total += (self.memory[ptr as usize] as u16) + carry;
+                (self.memory[ptr as usize] as u16) + carry
             }
-            Registers::A => total += (self.a as u16) + carry,
-            _ => err_flag = true,
-        }
+            Registers::A => (self.a as u16) + carry,
+            _ => {
+                err_flag = true;
+                0
+            }
+        };
+
+        total += adder;
+
+        // Check ac flag
+        self.ac_flag(adder);
 
         // Pass to flags for check
         self.flags(total);
@@ -225,9 +252,11 @@ impl State8080 {
     fn op_adi(&mut self) -> Result<u8, String> {
         self.pc += 1;
 
-        let total: u16 = (self.a as u16) + (self.memory[self.pc as usize] as u16);
+        let adder = self.memory[self.pc as usize] as u16;
+        let total: u16 = (self.a as u16) + adder;
 
         // Pass to flags to check output
+        self.ac_flag(adder);
         self.flags(total);
         self.a = total as u8;
 
@@ -237,13 +266,16 @@ impl State8080 {
     fn op_aci(&mut self) -> Result<u8, String> {
         self.pc += 1;
 
-        let total = if self.cc.cy {
-            (self.a as u16) + (self.memory[self.pc as usize] as u16) + 1
+        let adder = if self.cc.cy {
+            self.memory[self.pc as usize] as u16 + 1
         } else {
-            (self.a as u16) + (self.memory[self.pc as usize] as u16)
+            self.memory[self.pc as usize] as u16
         };
 
+        let total = (self.a as u16) + adder;
+
         // Pass to flags to check ouput
+        self.ac_flag(adder);
         self.flags(total);
         self.a = total as u8;
 
