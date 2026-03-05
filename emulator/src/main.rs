@@ -65,11 +65,25 @@ impl State8080 {
             0x00 => Ok(0),
             0x01 => self.op_lxi(Registers::B),
 
+            0x06 => self.op_mvi(Registers::B),
+
+            0x0e => self.op_mvi(Registers::C),
+
             0x11 => self.op_lxi(Registers::D),
+
+            0x16 => self.op_mvi(Registers::D),
+
+            0x1e => self.op_mvi(Registers::E),
 
             0x21 => self.op_lxi(Registers::H),
 
+            0x26 => self.op_lxi(Registers::H),
+
+            0x2e => self.op_lxi(Registers::L),
+
             0x31 => self.op_lxi(Registers::Sp),
+
+            0x36 => self.op_lxi(Registers::M),
 
             0x80 => self.op_add(Registers::B),
             0x81 => self.op_add(Registers::C),
@@ -98,6 +112,7 @@ impl State8080 {
         };
 
         self.pc += 1;
+        println!("{:004x}", self.pc);
         status
     }
 
@@ -135,6 +150,54 @@ impl State8080 {
 
         if err_flag {
             Err("Bad register passed to LXI".to_string())
+        } else {
+            Ok(0)
+        }
+    }
+
+    fn op_mvi(&mut self, reg: Registers) -> Result<u8, String> {
+        let mut err_flag = false;
+
+        match reg {
+            Registers::B => {
+                self.pc += 1;
+                self.b = self.memory[self.pc as usize]
+            }
+            Registers::C => {
+                self.pc += 1;
+                self.c = self.memory[self.pc as usize]
+            }
+            Registers::D => {
+                self.pc += 1;
+                self.d = self.memory[self.pc as usize]
+            }
+            Registers::E => {
+                self.pc += 1;
+                self.e = self.memory[self.pc as usize]
+            }
+            Registers::H => {
+                self.pc += 1;
+                self.h = self.memory[self.pc as usize]
+            }
+            Registers::L => {
+                self.pc += 1;
+                self.l = self.memory[self.pc as usize]
+            }
+            Registers::M => {
+                // M references a specific memory addr - treat H/L as a 16 bit addr
+                let ptr = (self.h as u16) << 8 | self.l as u16;
+                self.pc += 1;
+                self.memory[ptr as usize] = self.memory[self.pc as usize]
+            }
+            Registers::A => {
+                self.pc += 1;
+                self.a = self.memory[self.pc as usize]
+            }
+            _ => err_flag = true,
+        }
+
+        if err_flag {
+            Err("Bad register passed to MVI".to_string())
         } else {
             Ok(0)
         }
