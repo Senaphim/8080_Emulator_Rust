@@ -22,7 +22,7 @@ enum Flags {
     Np,
     Cy,
     Ncy,
-    Ac,
+    // Ac,
     None,
 }
 
@@ -117,24 +117,39 @@ impl State8080 {
 
             0xc2 => self.op_jmp(Flags::Nz),
             0xc3 => self.op_jmp(Flags::None),
+            0xc4 => self.op_call(Flags::Nz),
 
             0xc6 => self.op_adi(),
 
             0xca => self.op_jmp(Flags::Z),
 
+            0xcc => self.op_call(Flags::Z),
+            0xcd => self.op_call(Flags::None),
             0xce => self.op_aci(),
 
             0xd2 => self.op_jmp(Flags::Ncy),
 
+            0xd4 => self.op_call(Flags::Ncy),
+
             0xda => self.op_jmp(Flags::Cy),
+
+            0xdc => self.op_call(Flags::Cy),
 
             0xe2 => self.op_jmp(Flags::Np),
 
+            0xe4 => self.op_call(Flags::Np),
+
             0xea => self.op_jmp(Flags::P),
+
+            0xec => self.op_call(Flags::P),
 
             0xf2 => self.op_jmp(Flags::S),
 
+            0xf4 => self.op_call(Flags::S),
+
             0xfa => self.op_jmp(Flags::Ns),
+
+            0xfc => self.op_call(Flags::Ns),
 
             _ => Err(format!("Unimplemented opcode: {opcode:04x}")),
         };
@@ -296,6 +311,79 @@ impl State8080 {
         } else {
             Ok(0)
         }
+    }
+
+    fn op_call(&mut self, flg: Flags) -> Result<u8, String> {
+        let mut err_flag = false;
+
+        let pc_upper = ((self.pc & 0xff00) >> 8) as u8;
+        let pc_lower = (self.pc & 0x00ff) as u8;
+
+        self.pc += 1;
+        let lower = self.memory[self.pc as usize] as u16;
+        self.pc += 1;
+        let upper = self.memory[self.pc as usize] as u16;
+        // Minus 1 here as we are going to add one as part of the parent calling function. Need to
+        // make sure that the pointer ends up at the right address
+        let ptr = (upper << 8 | lower) - 1;
+
+        match flg {
+            Flags::Z => {
+                if self.cc.z {
+                    self.call(pc_upper, pc_lower, ptr)
+                }
+            }
+            Flags::Nz => {
+                if !self.cc.z {
+                    self.call(pc_upper, pc_lower, ptr)
+                }
+            }
+            Flags::S => {
+                if self.cc.s {
+                    self.call(pc_upper, pc_lower, ptr)
+                }
+            }
+            Flags::Ns => {
+                if !self.cc.s {
+                    self.call(pc_upper, pc_lower, ptr)
+                }
+            }
+            Flags::P => {
+                if self.cc.p {
+                    self.call(pc_upper, pc_lower, ptr)
+                }
+            }
+            Flags::Np => {
+                if !self.cc.p {
+                    self.call(pc_upper, pc_lower, ptr)
+                }
+            }
+            Flags::Cy => {
+                if self.cc.cy {
+                    self.call(pc_upper, pc_lower, ptr)
+                }
+            }
+            Flags::Ncy => {
+                if !self.cc.cy {
+                    self.call(pc_upper, pc_lower, ptr)
+                }
+            }
+            Flags::None => self.call(pc_upper, pc_lower, ptr),
+            _ => err_flag = true,
+        }
+
+        if err_flag {
+            Err("Bad flag passed to call".to_string())
+        } else {
+            Ok(0)
+        }
+    }
+
+    fn call(&mut self, pc_u: u8, pc_l: u8, ptr: u16) {
+        self.memory[(self.sp as usize) - 1] = pc_u;
+        self.memory[(self.sp as usize) - 2] = pc_l;
+        self.sp -= 2;
+        self.pc = ptr;
     }
 
     // ARITHMETIC
