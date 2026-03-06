@@ -13,6 +13,19 @@ enum Registers {
     Sp,
 }
 
+enum Flags {
+    Z,
+    Nz,
+    S,
+    Ns,
+    P,
+    Np,
+    Cy,
+    Ncy,
+    Ac,
+    None,
+}
+
 #[derive(Default)]
 struct ConditionCodes {
     z: bool,
@@ -102,11 +115,26 @@ impl State8080 {
             0x8e => self.op_adc(Registers::M),
             0x8f => self.op_adc(Registers::A),
 
-            0xc3 => self.op_jmp(),
+            0xc2 => self.op_jmp(Flags::Nz),
+            0xc3 => self.op_jmp(Flags::None),
 
             0xc6 => self.op_adi(),
 
+            0xca => self.op_jmp(Flags::Z),
+
             0xce => self.op_aci(),
+
+            0xd2 => self.op_jmp(Flags::Ncy),
+
+            0xda => self.op_jmp(Flags::Cy),
+
+            0xe2 => self.op_jmp(Flags::Np),
+
+            0xea => self.op_jmp(Flags::P),
+
+            0xf2 => self.op_jmp(Flags::S),
+
+            0xfa => self.op_jmp(Flags::Ns),
 
             _ => Err(format!("Unimplemented opcode: {opcode:04x}")),
         };
@@ -116,6 +144,8 @@ impl State8080 {
         status
     }
 
+    // MEMORY LOADS
+    // --------------------------------------------------------------------------------------------
     fn op_lxi(&mut self, reg: Registers) -> Result<u8, String> {
         let mut err_flag = false;
 
@@ -203,18 +233,73 @@ impl State8080 {
         }
     }
 
-    fn op_jmp(&mut self) -> Result<u8, String> {
+    // PROGRAM CONTROL
+    // --------------------------------------------------------------------------------------------
+    fn op_jmp(&mut self, flg: Flags) -> Result<u8, String> {
+        let mut err_flag = false;
+
         self.pc += 1;
         let lower = self.memory[self.pc as usize] as u16;
         self.pc += 1;
         let upper = self.memory[self.pc as usize] as u16;
         // Minus 1 here as we are going to add one as part of the parent calling function. Need to
         // make sure that the pointer ends up at the right address
-        self.pc = (upper << 8 | lower) - 1;
+        let ptr = (upper << 8 | lower) - 1;
 
-        Ok(0)
+        match flg {
+            Flags::Z => {
+                if self.cc.z {
+                    self.pc = ptr
+                }
+            }
+            Flags::Nz => {
+                if !self.cc.z {
+                    self.pc = ptr
+                }
+            }
+            Flags::S => {
+                if self.cc.s {
+                    self.pc = ptr
+                }
+            }
+            Flags::Ns => {
+                if !self.cc.s {
+                    self.pc = ptr
+                }
+            }
+            Flags::P => {
+                if self.cc.p {
+                    self.pc = ptr
+                }
+            }
+            Flags::Np => {
+                if !self.cc.p {
+                    self.pc = ptr
+                }
+            }
+            Flags::Cy => {
+                if self.cc.cy {
+                    self.pc = ptr
+                }
+            }
+            Flags::Ncy => {
+                if !self.cc.cy {
+                    self.pc = ptr
+                }
+            }
+            Flags::None => self.pc = ptr,
+            _ => err_flag = true,
+        }
+
+        if err_flag {
+            Err("Bad flag passed to jump".to_string())
+        } else {
+            Ok(0)
+        }
     }
 
+    // ARITHMETIC
+    // --------------------------------------------------------------------------------------------
     // Missing ac (Auxillary Carry) flag, but this is only used for one operation (DAA) so will be
     // manually set there
     fn flags(&mut self, val: u16) {
