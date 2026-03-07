@@ -22,7 +22,7 @@ enum Flags {
     Np,
     Cy,
     Ncy,
-    // Ac,
+    Ac,
     None,
 }
 
@@ -65,7 +65,7 @@ impl Default for State8080 {
             pc: 0x00,
             // int_enable: 0x00,
             cc: ConditionCodes::default(),
-            memory: vec![0x00],
+            memory: vec![0x00; 0xffff],
         }
     }
 }
@@ -73,6 +73,7 @@ impl Default for State8080 {
 impl State8080 {
     fn emulate_8080(&mut self) -> Result<u8, String> {
         let opcode = self.memory[self.pc as usize];
+        println!("{:04x}", opcode);
 
         let status = match opcode {
             0x00 => Ok(0),
@@ -173,7 +174,7 @@ impl State8080 {
             }
             Registers::D => {
                 self.pc += 1;
-                self.l = self.memory[self.pc as usize];
+                self.e = self.memory[self.pc as usize];
                 self.pc += 1;
                 self.d = self.memory[self.pc as usize];
             }
@@ -553,7 +554,9 @@ fn main() {
 
     let mut processor = State8080::default();
 
-    processor.memory = fs::read(filepath).expect("Should have been able to read the file");
+    let rom: Vec<u8> = fs::read(filepath).expect("Should have been able to read the file");
+
+    processor.memory[..rom.len()].clone_from_slice(&rom);
 
     loop {
         let ticks = processor.emulate_8080();
