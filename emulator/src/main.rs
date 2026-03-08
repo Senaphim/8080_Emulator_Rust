@@ -73,7 +73,6 @@ impl Default for State8080 {
 impl State8080 {
     fn emulate_8080(&mut self) -> Result<u8, String> {
         let opcode = self.memory[self.pc as usize];
-        println!("{:04x}", opcode);
 
         let status = match opcode {
             0x00 => Ok(0),
@@ -216,37 +215,54 @@ impl State8080 {
             0x8e => self.op_adc(Registers::M),
             0x8f => self.op_adc(Registers::A),
 
+            0xc0 => self.op_ret(Flags::Nz),
+
             0xc2 => self.op_jmp(Flags::Nz),
             0xc3 => self.op_jmp(Flags::None),
             0xc4 => self.op_call(Flags::Nz),
 
             0xc6 => self.op_adi(),
 
+            0xc8 => self.op_ret(Flags::Z),
+            0xc9 => self.op_ret(Flags::None),
             0xca => self.op_jmp(Flags::Z),
-
+            0xcb => Ok(0),
             0xcc => self.op_call(Flags::Z),
             0xcd => self.op_call(Flags::None),
             0xce => self.op_aci(),
+
+            0xd0 => self.op_ret(Flags::Ncy),
 
             0xd2 => self.op_jmp(Flags::Ncy),
 
             0xd4 => self.op_call(Flags::Ncy),
 
+            0xd8 => self.op_ret(Flags::Cy),
+            0xd9 => Ok(0),
             0xda => self.op_jmp(Flags::Cy),
 
             0xdc => self.op_call(Flags::Cy),
+            0xdd => Ok(0),
+
+            0xe0 => self.op_jmp(Flags::Np),
 
             0xe2 => self.op_jmp(Flags::Np),
 
             0xe4 => self.op_call(Flags::Np),
 
+            0xe8 => self.op_ret(Flags::P),
+
             0xea => self.op_jmp(Flags::P),
 
             0xec => self.op_call(Flags::P),
 
+            0xf0 => self.op_ret(Flags::S),
+
             0xf2 => self.op_jmp(Flags::S),
 
             0xf4 => self.op_call(Flags::S),
+
+            0xf8 => self.op_ret(Flags::Ns),
 
             0xfa => self.op_jmp(Flags::Ns),
 
@@ -256,7 +272,6 @@ impl State8080 {
         };
 
         self.pc += 1;
-        println!("{:004x}", self.pc);
         status
     }
 
@@ -552,6 +567,69 @@ impl State8080 {
         self.pc = ptr;
     }
 
+    fn op_ret(&mut self, flg: Flags) -> Result<u8, String> {
+        let mut err_flag = false;
+
+        let lower = self.memory[self.sp as usize];
+        let upper = self.memory[(self.sp as usize) + 1];
+
+        match flg {
+            Flags::Z => {
+                if self.cc.z {
+                    self.ret(upper, lower)
+                }
+            }
+            Flags::Nz => {
+                if !self.cc.z {
+                    self.ret(upper, lower)
+                }
+            }
+            Flags::S => {
+                if self.cc.s {
+                    self.ret(upper, lower)
+                }
+            }
+            Flags::Ns => {
+                if !self.cc.s {
+                    self.ret(upper, lower)
+                }
+            }
+            Flags::P => {
+                if self.cc.p {
+                    self.ret(upper, lower)
+                }
+            }
+            Flags::Np => {
+                if !self.cc.p {
+                    self.ret(upper, lower)
+                }
+            }
+            Flags::Cy => {
+                if self.cc.cy {
+                    self.ret(upper, lower)
+                }
+            }
+            Flags::Ncy => {
+                if !self.cc.cy {
+                    self.ret(upper, lower)
+                }
+            }
+            Flags::None => self.ret(upper, lower),
+            _ => err_flag = true,
+        }
+
+        if err_flag {
+            Err("Bad flag passed to RET".to_string())
+        } else {
+            Ok(0)
+        }
+    }
+
+    fn ret(&mut self, pc_u: u8, pc_l: u8) {
+        self.pc = (pc_u as u16) << 8 | pc_l as u16;
+        self.sp += 2
+    }
+
     // ARITHMETIC
     // --------------------------------------------------------------------------------------------
     // Missing ac (Auxillary Carry) flag, but this is only used for one operation (DAA) so will be
@@ -811,8 +889,6 @@ impl State8080 {
             }
         };
 
-        println!("{:04x}", total);
-
         // Store carry flag as not checked for inr or dcr
         let carry = self.cc.cy;
         total = total.wrapping_sub(1);
@@ -874,7 +950,33 @@ fn main() {
 
         match ticks {
             Ok(_) => (),
-            Err(e) => panic!("Error: {}", e),
+            Err(e) => {
+                println!("8080 STATE");
+                println!(
+                    "--------------------------------------------------------------------------------"
+                );
+                println!("Registers:");
+                println!("B: {:02x}", processor.b);
+                println!("C: {:02x}", processor.c);
+                println!("D: {:02x}", processor.d);
+                println!("E: {:02x}", processor.e);
+                println!("H: {:02x}", processor.h);
+                println!("L: {:02x}", processor.l);
+                println!("A: {:02x}", processor.a);
+
+                println!("\nPointers:");
+                println!("Stack Pointer:   {:04x}", processor.sp);
+                println!("Program Counter: {:04x}", processor.pc);
+
+                println!("\nFlags:");
+                println!("Zero:   {}", processor.cc.z);
+                println!("Sign:   {}", processor.cc.s);
+                println!("Parity: {}", processor.cc.p);
+                println!("Carry:  {}", processor.cc.cy);
+                println!("Carry2: {}", processor.cc.ac);
+
+                panic!("Error: {}", e)
+            }
         }
     }
 }
