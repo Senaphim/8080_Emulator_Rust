@@ -79,29 +79,48 @@ impl State8080 {
             0x00 => Ok(0),
             0x01 => self.op_lxi(Registers::B),
 
+            0x03 => self.op_inx(Registers::B),
+
             0x06 => self.op_mvi(Registers::B),
+
+            0x08 => Ok(0),
 
             0x0a => self.op_ldax(Registers::B),
 
             0x0e => self.op_mvi(Registers::C),
 
+            0x10 => Ok(0),
             0x11 => self.op_lxi(Registers::D),
 
+            0x13 => self.op_inx(Registers::D),
+
             0x16 => self.op_mvi(Registers::D),
+
+            0x18 => Ok(0),
 
             0x1a => self.op_ldax(Registers::D),
 
             0x1e => self.op_mvi(Registers::E),
 
+            0x20 => Ok(0),
             0x21 => self.op_lxi(Registers::H),
+
+            0x23 => self.op_inx(Registers::H),
 
             0x26 => self.op_lxi(Registers::H),
 
+            0x28 => Ok(0),
+
             0x2e => self.op_lxi(Registers::L),
 
+            0x30 => Ok(0),
             0x31 => self.op_lxi(Registers::Sp),
 
+            0x33 => self.op_inx(Registers::Sp),
+
             0x36 => self.op_lxi(Registers::M),
+
+            0x38 => Ok(0),
 
             0x40 => self.op_mov(Registers::B, Registers::B),
             0x41 => self.op_mov(Registers::B, Registers::C),
@@ -664,6 +683,48 @@ impl State8080 {
         self.a = total as u8;
 
         Ok(0)
+    }
+
+    fn op_inx(&mut self, reg: Registers) -> Result<u8, String> {
+        let mut err_flag = false;
+
+        let mut val = match reg {
+            Registers::B => (self.b as u16) << 8 | self.c as u16,
+            Registers::D => (self.d as u16) << 8 | self.e as u16,
+            Registers::H => (self.h as u16) << 8 | self.l as u16,
+            Registers::Sp => self.sp,
+            _ => {
+                err_flag = true;
+                0
+            }
+        };
+
+        val += 1;
+        let upper = ((val & 0xff00) >> 8) as u8;
+        let lower = (val & 0x00ff) as u8;
+
+        match reg {
+            Registers::B => {
+                self.b = upper;
+                self.c = lower;
+            }
+            Registers::D => {
+                self.d = upper;
+                self.e = lower;
+            }
+            Registers::H => {
+                self.h = upper;
+                self.l = lower;
+            }
+            Registers::Sp => self.sp = val,
+            _ => err_flag = true,
+        }
+
+        if err_flag {
+            Err("Bad flag passed to INX".to_string())
+        } else {
+            Ok(0)
+        }
     }
 }
 
