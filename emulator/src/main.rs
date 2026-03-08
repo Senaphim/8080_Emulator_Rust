@@ -81,11 +81,15 @@ impl State8080 {
 
             0x06 => self.op_mvi(Registers::B),
 
+            0x0a => self.op_ldax(Registers::B),
+
             0x0e => self.op_mvi(Registers::C),
 
             0x11 => self.op_lxi(Registers::D),
 
             0x16 => self.op_mvi(Registers::D),
+
+            0x1a => self.op_ldax(Registers::D),
 
             0x1e => self.op_mvi(Registers::E),
 
@@ -99,6 +103,70 @@ impl State8080 {
 
             0x36 => self.op_lxi(Registers::M),
 
+            0x40 => self.op_mov(Registers::B, Registers::B),
+            0x41 => self.op_mov(Registers::B, Registers::C),
+            0x42 => self.op_mov(Registers::B, Registers::D),
+            0x43 => self.op_mov(Registers::B, Registers::E),
+            0x44 => self.op_mov(Registers::B, Registers::H),
+            0x45 => self.op_mov(Registers::B, Registers::L),
+            0x46 => self.op_mov(Registers::B, Registers::M),
+            0x47 => self.op_mov(Registers::B, Registers::A),
+            0x48 => self.op_mov(Registers::C, Registers::B),
+            0x49 => self.op_mov(Registers::C, Registers::C),
+            0x4a => self.op_mov(Registers::C, Registers::D),
+            0x4b => self.op_mov(Registers::C, Registers::E),
+            0x4c => self.op_mov(Registers::C, Registers::H),
+            0x4d => self.op_mov(Registers::C, Registers::L),
+            0x4e => self.op_mov(Registers::C, Registers::M),
+            0x4f => self.op_mov(Registers::C, Registers::A),
+            0x50 => self.op_mov(Registers::D, Registers::B),
+            0x51 => self.op_mov(Registers::D, Registers::C),
+            0x52 => self.op_mov(Registers::D, Registers::D),
+            0x53 => self.op_mov(Registers::D, Registers::E),
+            0x54 => self.op_mov(Registers::D, Registers::H),
+            0x55 => self.op_mov(Registers::D, Registers::L),
+            0x56 => self.op_mov(Registers::D, Registers::M),
+            0x57 => self.op_mov(Registers::D, Registers::A),
+            0x58 => self.op_mov(Registers::E, Registers::B),
+            0x59 => self.op_mov(Registers::E, Registers::C),
+            0x5a => self.op_mov(Registers::E, Registers::D),
+            0x5b => self.op_mov(Registers::E, Registers::E),
+            0x5c => self.op_mov(Registers::E, Registers::H),
+            0x5d => self.op_mov(Registers::E, Registers::L),
+            0x5e => self.op_mov(Registers::E, Registers::M),
+            0x5f => self.op_mov(Registers::E, Registers::A),
+            0x60 => self.op_mov(Registers::H, Registers::B),
+            0x61 => self.op_mov(Registers::H, Registers::C),
+            0x62 => self.op_mov(Registers::H, Registers::D),
+            0x63 => self.op_mov(Registers::H, Registers::E),
+            0x64 => self.op_mov(Registers::H, Registers::H),
+            0x65 => self.op_mov(Registers::H, Registers::L),
+            0x66 => self.op_mov(Registers::H, Registers::M),
+            0x67 => self.op_mov(Registers::H, Registers::A),
+            0x68 => self.op_mov(Registers::L, Registers::B),
+            0x69 => self.op_mov(Registers::L, Registers::C),
+            0x6a => self.op_mov(Registers::L, Registers::D),
+            0x6b => self.op_mov(Registers::L, Registers::E),
+            0x6c => self.op_mov(Registers::L, Registers::H),
+            0x6d => self.op_mov(Registers::L, Registers::L),
+            0x6e => self.op_mov(Registers::L, Registers::M),
+            0x6f => self.op_mov(Registers::L, Registers::A),
+            0x70 => self.op_mov(Registers::M, Registers::B),
+            0x71 => self.op_mov(Registers::M, Registers::C),
+            0x72 => self.op_mov(Registers::M, Registers::D),
+            0x73 => self.op_mov(Registers::M, Registers::E),
+            0x74 => self.op_mov(Registers::M, Registers::H),
+            0x75 => self.op_mov(Registers::M, Registers::L),
+
+            0x77 => self.op_mov(Registers::M, Registers::A),
+            0x78 => self.op_mov(Registers::A, Registers::B),
+            0x79 => self.op_mov(Registers::A, Registers::C),
+            0x7a => self.op_mov(Registers::A, Registers::D),
+            0x7b => self.op_mov(Registers::A, Registers::E),
+            0x7c => self.op_mov(Registers::A, Registers::H),
+            0x7d => self.op_mov(Registers::A, Registers::L),
+            0x7e => self.op_mov(Registers::A, Registers::M),
+            0x7f => self.op_mov(Registers::A, Registers::A),
             0x80 => self.op_add(Registers::B),
             0x81 => self.op_add(Registers::C),
             0x82 => self.op_add(Registers::D),
@@ -160,7 +228,7 @@ impl State8080 {
         status
     }
 
-    // MEMORY LOADS
+    // MEMORY LOADS AND MOVES
     // --------------------------------------------------------------------------------------------
     fn op_lxi(&mut self, reg: Registers) -> Result<u8, String> {
         let mut err_flag = false;
@@ -244,6 +312,71 @@ impl State8080 {
 
         if err_flag {
             Err("Bad register passed to MVI".to_string())
+        } else {
+            Ok(0)
+        }
+    }
+
+    fn op_ldax(&mut self, reg: Registers) -> Result<u8, String> {
+        let mut err_flag = false;
+
+        match reg {
+            Registers::D => {
+                let upper = self.d as u16;
+                let lower = self.e as u16;
+                let ptr = (upper << 8) | lower;
+                self.a = self.memory[ptr as usize];
+            }
+            Registers::B => {
+                let upper = self.b as u16;
+                let lower = self.c as u16;
+                let ptr = (upper << 8) | lower;
+                self.a = self.memory[ptr as usize];
+            }
+            _ => err_flag = true,
+        }
+
+        if err_flag {
+            Err("Bad register passed to LDAX".to_string())
+        } else {
+            Ok(0)
+        }
+    }
+
+    fn op_mov(&mut self, dest: Registers, from: Registers) -> Result<u8, String> {
+        let mut err_flag = false;
+
+        let from_val = match from {
+            Registers::B => self.b,
+            Registers::C => self.c,
+            Registers::D => self.d,
+            Registers::E => self.e,
+            Registers::H => self.h,
+            Registers::L => self.l,
+            Registers::M => self.memory[((self.h as u16) << 8 | (self.l as u16)) as usize],
+            Registers::A => self.a,
+            _ => {
+                err_flag = true;
+                0
+            }
+        };
+
+        match dest {
+            Registers::B => self.b = from_val,
+            Registers::C => self.c = from_val,
+            Registers::D => self.d = from_val,
+            Registers::E => self.e = from_val,
+            Registers::H => self.h = from_val,
+            Registers::L => self.l = from_val,
+            Registers::M => {
+                self.memory[((self.h as u16) << 8 | (self.l as u16)) as usize] = from_val
+            }
+            Registers::A => self.a = from_val,
+            _ => err_flag = true,
+        }
+
+        if err_flag {
+            Err("Bad flag passed to MOV".to_string())
         } else {
             Ok(0)
         }
