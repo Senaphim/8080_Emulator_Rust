@@ -116,13 +116,13 @@ impl State8080 {
             0x23 => self.op_inx(Registers::H),
             0x24 => self.op_inr(Registers::H),
             0x25 => self.op_dcr(Registers::H),
-            0x26 => self.op_lxi(Registers::H),
+            0x26 => self.op_mvi(Registers::H),
 
             0x28 => Ok(0),
 
             0x2c => self.op_inr(Registers::L),
             0x2d => self.op_dcr(Registers::L),
-            0x2e => self.op_lxi(Registers::L),
+            0x2e => self.op_mvi(Registers::L),
 
             0x30 => Ok(0),
             0x31 => self.op_lxi(Registers::Sp),
@@ -136,6 +136,8 @@ impl State8080 {
 
             0x3c => self.op_inr(Registers::A),
             0x3d => self.op_dcr(Registers::A),
+
+            0x3e => self.op_mvi(Registers::A),
 
             0x40 => self.op_mov(Registers::B, Registers::B),
             0x41 => self.op_mov(Registers::B, Registers::C),
