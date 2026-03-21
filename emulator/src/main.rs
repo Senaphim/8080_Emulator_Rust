@@ -1,3 +1,5 @@
+mod test;
+
 use std::env;
 use std::fs;
 
@@ -11,6 +13,7 @@ enum Registers {
     L,
     M,
     Sp,
+    I,
 }
 
 enum Flags {
@@ -65,7 +68,7 @@ impl Default for State8080 {
             pc: 0x00,
             // int_enable: 0x00,
             cc: ConditionCodes::default(),
-            memory: vec![0x00; 0xffff],
+            memory: vec![0x00; 0x10000],
         }
     }
 }
@@ -127,7 +130,7 @@ impl State8080 {
             0x33 => self.op_inx(Registers::Sp),
             0x34 => self.op_inr(Registers::M),
             0x35 => self.op_dcr(Registers::M),
-            0x36 => self.op_lxi(Registers::M),
+            0x36 => self.op_mvi(Registers::M),
 
             0x38 => Ok(0),
 
@@ -215,6 +218,23 @@ impl State8080 {
             0x8e => self.op_adc(Registers::M),
             0x8f => self.op_adc(Registers::A),
 
+            0xa0 => self.op_and(Registers::B),
+            0xa1 => self.op_and(Registers::C),
+            0xa2 => self.op_and(Registers::D),
+            0xa3 => self.op_and(Registers::E),
+            0xa4 => self.op_and(Registers::H),
+            0xa5 => self.op_and(Registers::L),
+            0xa6 => self.op_and(Registers::M),
+            0xa7 => self.op_and(Registers::A),
+
+            0xb8 => self.op_cmp(Registers::B),
+            0xb9 => self.op_cmp(Registers::C),
+            0xba => self.op_cmp(Registers::D),
+            0xbb => self.op_cmp(Registers::E),
+            0xbc => self.op_cmp(Registers::H),
+            0xbd => self.op_cmp(Registers::L),
+            0xbe => self.op_cmp(Registers::M),
+            0xbf => self.op_cmp(Registers::A),
             0xc0 => self.op_ret(Flags::Nz),
 
             0xc2 => self.op_jmp(Flags::Nz),
@@ -250,10 +270,13 @@ impl State8080 {
 
             0xe4 => self.op_call(Flags::Np),
 
+            0xe6 => self.op_and(Registers::I),
+
             0xe8 => self.op_ret(Flags::P),
 
             0xea => self.op_jmp(Flags::P),
 
+            0xed => Ok(0),
             0xec => self.op_call(Flags::P),
 
             0xf0 => self.op_ret(Flags::S),
@@ -267,6 +290,8 @@ impl State8080 {
             0xfa => self.op_jmp(Flags::Ns),
 
             0xfc => self.op_call(Flags::Ns),
+            0xfd => Ok(0),
+            0xfe => self.op_cmp(Registers::I),
 
             _ => Err(format!("Unimplemented opcode: {opcode:04x}")),
         };
@@ -915,6 +940,73 @@ impl State8080 {
 
         if err_flag {
             Err("Bad flag passed to INR".to_string())
+        } else {
+            Ok(0)
+        }
+    }
+
+    // LOGICAL OPERATORS
+    // --------------------------------------------------------------------------------------------
+    fn op_and(&mut self, reg: Registers) -> Result<u8, String> {
+        let mut err_flag = false;
+
+        let total = match reg {
+            Registers::B => self.a & self.b,
+            Registers::C => self.a & self.c,
+            Registers::D => self.a & self.d,
+            Registers::E => self.a & self.e,
+            Registers::H => self.a & self.h,
+            Registers::L => self.a & self.l,
+            Registers::M => self.a & self.memory[((self.h as u16) << 8 | (self.l as u16)) as usize],
+            Registers::I => {
+                self.pc += 1;
+                self.a * self.memory[self.pc as usize]
+            }
+            Registers::A => self.a & self.a,
+            _ => {
+                err_flag = true;
+                0
+            }
+        };
+
+        self.flags(total as u16);
+        self.cc.cy = false;
+
+        if err_flag {
+            Err("Bad flag passed to AND".to_string())
+        } else {
+            self.a = total;
+            Ok(0)
+        }
+    }
+
+    fn op_cmp(&mut self, reg: Registers) -> Result<u8, String> {
+        let mut err_flag = false;
+
+        let total = match reg {
+            Registers::B => (self.a as u16).wrapping_sub(self.b as u16),
+            Registers::C => (self.a as u16).wrapping_sub(self.c as u16),
+            Registers::D => (self.a as u16).wrapping_sub(self.d as u16),
+            Registers::E => (self.a as u16).wrapping_sub(self.e as u16),
+            Registers::H => (self.a as u16).wrapping_sub(self.h as u16),
+            Registers::L => (self.a as u16).wrapping_sub(self.l as u16),
+            Registers::M => {
+                let val = self.memory[((self.h as u16) << 8 | (self.l as u16)) as usize] as u16;
+                (self.a as u16).wrapping_sub(val)
+            }
+            Registers::A => (self.a as u16).wrapping_sub(self.a as u16),
+            Registers::I => (self.a as u16).wrapping_sub(self.b as u16),
+            _ => {
+                err_flag = true;
+                0
+            }
+        };
+
+        self.ac_flag(total);
+        self.flags(total);
+
+        if err_flag {
+            Err("Bad flag passed to CMP".to_string())
         } else {
             Ok(0)
         }
