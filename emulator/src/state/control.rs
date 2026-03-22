@@ -198,8 +198,8 @@ impl State8080 {
     }
 
     pub fn ret(&mut self, pc_u: u8, pc_l: u8) {
-        // Subtract 1 as we will be adding 1 as part of calling function
-        self.pc = ((pc_u as u16) << 8 | pc_l as u16).wrapping_sub(1);
+        // Not sure if subtract 1 as we will be adding 1 as part of calling function
+        self.pc = (pc_u as u16) << 8 | pc_l as u16; //.wrapping_sub(1);
         self.sp += 2
     }
 }

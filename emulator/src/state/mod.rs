@@ -266,7 +266,7 @@ impl State8080 {
             0xdc => self.op_call(Flags::Cy),
             0xdd => Ok(0),
 
-            0xe0 => self.op_jmp(Flags::Np),
+            0xe0 => self.op_ret(Flags::Np),
 
             0xe2 => self.op_jmp(Flags::Np),
 
