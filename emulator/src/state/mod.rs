@@ -2,6 +2,7 @@ pub mod arithmetic;
 pub mod control;
 pub mod logical;
 pub mod memory;
+pub mod stack;
 
 pub enum Registers {
     A,
@@ -242,7 +243,7 @@ impl State8080 {
             0xc2 => self.op_jmp(Flags::Nz),
             0xc3 => self.op_jmp(Flags::None),
             0xc4 => self.op_call(Flags::Nz),
-
+            0xc5 => self.op_push(Registers::B),
             0xc6 => self.op_adi(),
 
             0xc8 => self.op_ret(Flags::Z),
@@ -258,6 +259,7 @@ impl State8080 {
             0xd2 => self.op_jmp(Flags::Ncy),
 
             0xd4 => self.op_call(Flags::Ncy),
+            0xd5 => self.op_push(Registers::D),
 
             0xd8 => self.op_ret(Flags::Cy),
             0xd9 => Ok(0),
@@ -271,7 +273,7 @@ impl State8080 {
             0xe2 => self.op_jmp(Flags::Np),
 
             0xe4 => self.op_call(Flags::Np),
-
+            0xe5 => self.op_push(Registers::H),
             0xe6 => self.op_and(Registers::I),
 
             0xe8 => self.op_ret(Flags::P),
@@ -286,6 +288,7 @@ impl State8080 {
             0xf2 => self.op_jmp(Flags::S),
 
             0xf4 => self.op_call(Flags::S),
+            0xf5 => self.op_push(Registers::A),
 
             0xf8 => self.op_ret(Flags::Ns),
 
