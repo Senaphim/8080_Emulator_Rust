@@ -298,7 +298,11 @@ impl State8080 {
             _ => Err(format!("Unimplemented opcode: {opcode:04x}")),
         };
 
-        self.pc += 1;
+        // The design decistion to have the pc increment at the end of the routine rather than the
+        // beginning is one that has resulted in some weirdness with the call and return methods. I
+        // am still not sure if that decision is a good one, but it makes the initialisation of the
+        // system and loading of values much cleaner
+        self.pc = self.pc.wrapping_add(1);
         status
     }
 }

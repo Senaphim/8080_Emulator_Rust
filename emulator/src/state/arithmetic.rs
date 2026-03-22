@@ -161,7 +161,7 @@ impl State8080 {
             }
         };
 
-        val += 1;
+        val = val.wrapping_add(1);
         let upper = ((val & 0xff00) >> 8) as u8;
         let lower = (val & 0x00ff) as u8;
 

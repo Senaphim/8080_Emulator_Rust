@@ -1,4 +1,6 @@
 #[cfg(test)]
+mod call;
+#[cfg(test)]
 mod jmp;
 #[cfg(test)]
 mod ldax;
@@ -8,3 +10,5 @@ mod lxi;
 mod mov;
 #[cfg(test)]
 mod mvi;
+#[cfg(test)]
+mod ret;
