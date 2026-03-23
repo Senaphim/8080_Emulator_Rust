@@ -1,6 +1,8 @@
 use crate::state::{Registers, State8080};
 
 impl State8080 {
+    // STACK OPERATIONS
+    // --------------------------------------------------------------------------------------------
     pub fn op_push(&mut self, reg: Registers) -> Result<u8, String> {
         let mut err_flag = false;
 

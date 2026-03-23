@@ -1,5 +1,9 @@
 #[cfg(test)]
+mod and;
+#[cfg(test)]
 mod call;
+#[cfg(test)]
+mod cmp;
 #[cfg(test)]
 mod jmp;
 #[cfg(test)]
