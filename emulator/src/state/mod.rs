@@ -240,7 +240,7 @@ impl State8080 {
             0xbe => self.op_cmp(Registers::M),
             0xbf => self.op_cmp(Registers::A),
             0xc0 => self.op_ret(Flags::Nz),
-
+            0xc1 => self.op_pop(Registers::B),
             0xc2 => self.op_jmp(Flags::Nz),
             0xc3 => self.op_jmp(Flags::None),
             0xc4 => self.op_call(Flags::Nz),
@@ -256,7 +256,7 @@ impl State8080 {
             0xce => self.op_aci(),
 
             0xd0 => self.op_ret(Flags::Ncy),
-
+            0xd1 => self.op_pop(Registers::D),
             0xd2 => self.op_jmp(Flags::Ncy),
 
             0xd4 => self.op_call(Flags::Ncy),
@@ -270,7 +270,7 @@ impl State8080 {
             0xdd => Ok(0),
 
             0xe0 => self.op_ret(Flags::Np),
-
+            0xe1 => self.op_pop(Registers::H),
             0xe2 => self.op_jmp(Flags::Np),
 
             0xe4 => self.op_call(Flags::Np),
@@ -286,7 +286,7 @@ impl State8080 {
             0xec => self.op_call(Flags::P),
 
             0xf0 => self.op_ret(Flags::S),
-
+            0xf1 => self.op_pop(Registers::A),
             0xf2 => self.op_jmp(Flags::S),
 
             0xf4 => self.op_call(Flags::S),

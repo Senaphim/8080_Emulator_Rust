@@ -17,6 +17,10 @@ mod mov;
 #[cfg(test)]
 mod mvi;
 #[cfg(test)]
+mod pop;
+#[cfg(test)]
+mod push;
+#[cfg(test)]
 mod ret;
 #[cfg(test)]
 mod xchg;
