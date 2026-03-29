@@ -36,6 +36,7 @@ impl State8080 {
         }
     }
 
+    // TODO: ac flag needs sorting to work on subtractions...
     pub fn op_cmp(&mut self, reg: Registers) -> Result<u8, String> {
         let mut err_flag = false;
 
@@ -58,7 +59,6 @@ impl State8080 {
             }
         };
 
-        self.ac_flag(total);
         self.flags(total);
 
         if err_flag {

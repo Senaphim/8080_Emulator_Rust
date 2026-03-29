@@ -18,8 +18,8 @@ impl State8080 {
 
     // Function for calculating ac flag. Need to bit mask bits 4-7 (this also masks bits 7-15 as
     // well as we are using 16 bit maths to emulate 8 bit) to work out if ac it activated
-    pub fn ac_flag(&mut self, val: u16) {
-        let accumulator = (self.a as u16) & 0xf;
+    pub fn ac_flag(&mut self, acc: u16, val: u16) {
+        let accumulator = acc & 0xf;
         let adder = val & 0xf;
         let total = accumulator + adder;
 
@@ -55,7 +55,7 @@ impl State8080 {
 
         // Check ac flag. This is changed by every arithmetic operation but only affects one
         // instruction...
-        self.ac_flag(adder);
+        self.ac_flag(self.a as u16, adder);
 
         // flags function modifies relevant flags based off of total
         self.flags(total);
@@ -99,7 +99,7 @@ impl State8080 {
         total += adder;
 
         // Check ac flag
-        self.ac_flag(adder);
+        self.ac_flag(self.a as u16, adder);
 
         // Pass to flags for check
         self.flags(total);
@@ -121,7 +121,7 @@ impl State8080 {
         let total: u16 = (self.a as u16) + adder;
 
         // Pass to flags to check output
-        self.ac_flag(adder);
+        self.ac_flag(self.a as u16, adder);
         self.flags(total);
         self.a = total as u8;
 
@@ -140,7 +140,7 @@ impl State8080 {
         let total = (self.a as u16) + adder;
 
         // Pass to flags to check ouput
-        self.ac_flag(adder);
+        self.ac_flag(self.a as u16, adder);
         self.flags(total);
         self.a = total as u8;
 
@@ -189,8 +189,6 @@ impl State8080 {
         }
     }
 
-    // TODO: Missing AC flag evaluation as current implementation means that AC flag is only
-    // calculated for the A register
     pub fn op_inr(&mut self, reg: Registers) -> Result<u8, String> {
         let mut err_flag = false;
 
@@ -214,6 +212,7 @@ impl State8080 {
         total = total.wrapping_add(1);
 
         // Check flags
+        self.ac_flag(total - 1, 1);
         self.flags(total);
 
         // Write carry flag back
@@ -240,8 +239,8 @@ impl State8080 {
         }
     }
 
-    // TODO: Missing AC flag evaluation as current implementation means that AC flag is only
-    // calculated for the A register
+    // TODO: Missing AC flag evaluation as current implementation cant calculate ac flag when
+    // subtracting... Not sure if the flag is even needed...
     pub fn op_dcr(&mut self, reg: Registers) -> Result<u8, String> {
         let mut err_flag = false;
 
@@ -286,6 +285,37 @@ impl State8080 {
 
         if err_flag {
             Err("Bad flag passed to INR".to_string())
+        } else {
+            Ok(0)
+        }
+    }
+
+    pub fn op_dad(&mut self, reg: Registers) -> Result<u8, String> {
+        // Using 32 bit math so that we can detect carry out easier
+        let mut err_flag = false;
+
+        let val = match reg {
+            Registers::B => (self.b as u32) << 8 | self.c as u32,
+            Registers::D => (self.d as u32) << 8 | self.e as u32,
+            Registers::H => (self.h as u32) << 8 | self.l as u32,
+            Registers::Sp => self.sp as u32,
+            _ => {
+                err_flag = true;
+                0
+            }
+        };
+
+        let mut total = (self.h as u32) << 8 | self.l as u32;
+        total += val;
+
+        let carry = total & 0x10000;
+        self.cc.cy = carry > 0;
+
+        self.h = (total as u16 >> 8) as u8;
+        self.l = total as u8;
+
+        if err_flag {
+            Err("Bad register passed to DAD".to_string())
         } else {
             Ok(0)
         }

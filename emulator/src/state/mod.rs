@@ -88,7 +88,7 @@ impl State8080 {
             0x06 => self.op_mvi(Registers::B),
 
             0x08 => Ok(0),
-
+            0x09 => self.op_dad(Registers::B),
             0x0a => self.op_ldax(Registers::B),
 
             0x0c => self.op_inr(Registers::C),
@@ -104,7 +104,7 @@ impl State8080 {
             0x16 => self.op_mvi(Registers::D),
 
             0x18 => Ok(0),
-
+            0x19 => self.op_dad(Registers::D),
             0x1a => self.op_ldax(Registers::D),
 
             0x1c => self.op_inr(Registers::E),
@@ -120,7 +120,7 @@ impl State8080 {
             0x26 => self.op_mvi(Registers::H),
 
             0x28 => Ok(0),
-
+            0x29 => self.op_dad(Registers::H),
             0x2c => self.op_inr(Registers::L),
             0x2d => self.op_dcr(Registers::L),
             0x2e => self.op_mvi(Registers::L),
@@ -134,6 +134,7 @@ impl State8080 {
             0x36 => self.op_mvi(Registers::M),
 
             0x38 => Ok(0),
+            0x39 => self.op_dad(Registers::Sp),
 
             0x3c => self.op_inr(Registers::A),
             0x3d => self.op_dcr(Registers::A),
@@ -279,6 +280,7 @@ impl State8080 {
             0xe8 => self.op_ret(Flags::P),
 
             0xea => self.op_jmp(Flags::P),
+            0xeb => self.op_xchg(),
 
             0xed => Ok(0),
             0xec => self.op_call(Flags::P),

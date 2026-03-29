@@ -50,4 +50,12 @@ impl State8080 {
         self.memory[(self.sp - 2) as usize] = acc;
         self.sp = self.sp.wrapping_sub(2);
     }
+
+    // Not technically a stack operation, but there isn't really a better place to put it
+    pub fn op_xchg(&mut self) -> Result<u8, String> {
+        std::mem::swap(&mut self.h, &mut self.d);
+        std::mem::swap(&mut self.l, &mut self.e);
+
+        Ok(0)
+    }
 }

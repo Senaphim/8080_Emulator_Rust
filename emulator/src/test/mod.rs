@@ -5,6 +5,8 @@ mod call;
 #[cfg(test)]
 mod cmp;
 #[cfg(test)]
+mod dad;
+#[cfg(test)]
 mod jmp;
 #[cfg(test)]
 mod ldax;
@@ -16,3 +18,5 @@ mod mov;
 mod mvi;
 #[cfg(test)]
 mod ret;
+#[cfg(test)]
+mod xchg;
